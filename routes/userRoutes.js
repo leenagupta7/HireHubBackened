@@ -189,13 +189,14 @@ router.post('/signup',async(req,res)=>{
     }
   });
   
+ 
   router.post('/placebid/:userid', async (req, res) => {
     try {
       const { userid } = req.params;
       const { clientid, id } = req.body;
   
-      // Use findOneAndUpdate to update the specific project in the projects array
-      const client = await Client.findOneAndUpdate(
+      // Step 1: Update the specific project's freelancer array
+      const clientUpdate = await Client.findOneAndUpdate(
         {
           _id: clientid,
           'projects.id': id,
@@ -206,19 +207,31 @@ router.post('/signup',async(req,res)=>{
         { new: true, upsert: false }
       );
   
-      if (!client) {
+      if (!clientUpdate) {
         return res.status(404).json({ message: 'Client or project not found' });
       }
   
+      // Step 2: Retrieve the project with populated freelancer details
+      const updatedClient = await Client.findOne(
+        {
+          _id: clientid,
+          'projects.id': id,
+        }
+      ).populate('projects.freelancer');
+  
+      // Find the specific project with populated freelancer details
+      const populatedProject = updatedClient.projects.find(project => project.id === id);
+  
       res.status(200).json({
         message: 'Bid placed successfully',
-        project: client.projects.find(project => project.id === id),
+        project: populatedProject,
       });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error placing bid' });
     }
   });
+  
   
 module.exports = router;
 
